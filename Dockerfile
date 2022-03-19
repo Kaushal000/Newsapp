@@ -1,14 +1,15 @@
-FROM node:12.14.0 as build 
-ARG REACT_APP_NEWS_API_KEY
-WORKDIR /app 
-COPY ./package.json . 
-COPY ./package-lock.json .
+FROM node:17-alpine3.14 as build-stage
+WORKDIR /app
+COPY package*.json /app/
 RUN npm install
-COPY ./public ./public/ 
-COPY ./src ./src/
-RUN REACT_APP_NEWS_API_KEY=${REACT_APP_NEWS_API_KEY} \ 
-    npm run build
-FROM nginx:1.17-alpine 
-COPY --from=build /app/build /usr/share/nginx/html 
-EXPOSE 80 
-CMD ["nginx", "-g", "daemon off;"]
+COPY ./public /app/public/ 
+COPY ./src /app/src/    
+ARG API_KEY
+ENV REACT_APP_NEWS_API_KEY $API_KEY 
+RUN npm run build
+FROM nginx:1.21.6-alpine
+COPY --from=build-stage /app/build/ /usr/share/nginx/html
+# Copy the default nginx.conf provided by tiangolo/node-frontend
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx","-g","daemon off;"]
